@@ -2263,15 +2263,57 @@ FROM (
 	GROUP BY o.customer_id, p.product_id, p.product_name) t1
 WHERE rk = 1;
 
+-- 125.1635.Hopper Company Queries I
+SELECT * FROM drivers;
+SELECT * FROM rides;
+SELECT * FROM acceptedrides;
+WITH RECURSIVE a AS (
+SELECT 1 AS month
+UNION ALL
+SELECT month + 1 
+FROM a
+WHERE month + 1 <= 12
+)
+SELECT 
+	month,
+    (SELECT COUNT(DISTINCT driver_id) FROM drivers WHERE join_date < IFNULL(DATE(CONCAT_WS('-', 2020, a.month + 1, 1)), '2021-1-1')) AS active_drivers,
+    (SELECT COUNT(DISTINCT a.ride_id)
+    FROM rides r 
+    LEFT JOIN acceptedrides a
+		ON r.ride_id = a.ride_id
+	WHERE YEAR(r.requested_at) = 2020 AND MONTH(r.requested_at) = month) AS accepted_rides
+FROM a;
 
-
-
-
-
-
-
-
-
+-- 126.1651.opper Company Queries III
+WITH RECURSIVE a AS (
+SELECT 1 AS month
+UNION ALL
+SELECT month + 1 
+FROM a
+WHERE month + 1 <= 12
+)
+SELECT
+	month,
+    ROUND(AVG(ride_distance) OVER(ORDER BY month ROWS BETWEEN CURRENT ROW AND 2 FOLLOWING),2) AS average_ride_distance,
+    ROUND(AVG(ride_duration) OVER(ORDER BY month ROWS BETWEEN CURRENT ROW AND 2 FOLLOWING),2) AS average_ride_duration
+FROM (
+	SELECT
+		month,
+		IFNULL(SUM(ride_distance),0) AS ride_distance,
+		IFNULL(SUM(ride_duration),0) AS ride_duration
+	FROM (
+		SELECT *
+		FROM a
+		LEFT JOIN 
+			(SELECT r.ride_id, r.requested_at, a.ride_distance, a.ride_duration
+			FROM rides r
+			INNER JOIN acceptedrides a
+				ON r.ride_id = a.ride_id
+			WHERE YEAR(r.requested_at) = 2020) t1
+			ON a.month = MONTH(t1.requested_at)) t2
+	GROUP BY month) t3
+ORDER BY month
+LIMIT 10;
 
 
 
